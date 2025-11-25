@@ -1,0 +1,13 @@
+langchain
+langchain-google-genai
+langgraph
+pgvector
+psycopg2-binary
+tavily-python
+yt-dlp
+python-dotenv
+pandas
+pandas-ta
+streamlit
+plotly
+sqlalchemy

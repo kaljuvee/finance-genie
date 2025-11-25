@@ -1,0 +1,1 @@
+"""Finance Genie test suite."""
