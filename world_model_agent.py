@@ -4,7 +4,7 @@ import os
 import json
 import requests
 import pandas as pd
-import pandas_ta as ta
+import ta as ta_lib
 from typing import List, Dict, Any
 from datetime import datetime
 import uuid
@@ -37,17 +37,24 @@ if not all([GOOGLE_API_KEY, TAVILY_API_KEY, PGVECTOR_CONNECTION]):
     raise ValueError("Missing required environment variables")
 
 # ---------- Initialize Embeddings & Vector Store ----------
-embed = GoogleGenerativeAIEmbeddings(
-    model="models/text-embedding-004",
-    google_api_key=GOOGLE_API_KEY
-)
+embed = None
+vectorstore = None
 
-vectorstore = PGVector(
-    connection_string=PGVECTOR_CONNECTION,
-    embedding_function=embed,
-    collection_name="world_docs",
-    distance_strategy="cosine"
-)
+def get_vectorstore():
+    """Lazily initialize vector store on first use."""
+    global embed, vectorstore
+    if vectorstore is None:
+        embed = GoogleGenerativeAIEmbeddings(
+            model="models/text-embedding-004",
+            google_api_key=GOOGLE_API_KEY
+        )
+        vectorstore = PGVector(
+            connection_string=PGVECTOR_CONNECTION,
+            embedding_function=embed,
+            collection_name="world_docs",
+            distance_strategy="cosine"
+        )
+    return vectorstore
 
 # ---------- Initialize External Services ----------
 tavily = TavilyClient(api_key=TAVILY_API_KEY)
@@ -74,7 +81,11 @@ def search_trading_news(query: str) -> str:
     try:
         ans = tavily.search(query, max_results=5, include_answer=True)
         # Store in vector database for retrieval later
-        vectorstore.add_texts([json.dumps(ans)])
+        try:
+            vs = get_vectorstore()
+            vs.add_texts([json.dumps(ans)])
+        except Exception as db_err:
+            print(f"Warning: Could not store to vector DB: {db_err}")
         return json.dumps(ans)
     except Exception as e:
         return f"Error searching news: {e}"
@@ -97,7 +108,11 @@ def download_trading_video(youtube_url: str) -> str:
             text = " ".join([l for l in f if "-->" not in l and not l.startswith("WEBVTT")])
         
         # Store in vector database
-        vectorstore.add_texts([text])
+        try:
+            vs = get_vectorstore()
+            vs.add_texts([text])
+        except Exception as db_err:
+            print(f"Warning: Could not store to vector DB: {db_err}")
         return text[:10_000]
     except Exception as e:
         return f"Error downloading video: {e}"
@@ -121,8 +136,8 @@ def get_daily_ohlcv(symbol: str) -> str:
             return "Error: Unexpected data format"
         
         # Add technical indicators
-        df.ta.sma(length=20, append=True)
-        df.ta.rsi(length=14, append=True)
+        df['SMA_20'] = ta_lib.trend.sma_indicator(df['close'], window=20)
+        df['RSI_14'] = ta_lib.momentum.rsi(df['close'], window=14)
         
         return df.to_csv()
     except Exception as e:
@@ -133,7 +148,8 @@ def get_daily_ohlcv(symbol: str) -> str:
 def recall_vector_store(query: str) -> List[str]:
     """Semantic search over past news, videos, and analysis."""
     try:
-        docs = vectorstore.similarity_search(query, k=4)
+        vs = get_vectorstore()
+        docs = vs.similarity_search(query, k=4)
         return [d.page_content for d in docs]
     except Exception as e:
         return [f"Error recalling vector store: {e}"]

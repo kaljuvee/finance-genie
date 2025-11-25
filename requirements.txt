@@ -1,4 +1,5 @@
 langchain
+langchain-community
 langchain-google-genai
 langgraph
 pgvector
@@ -7,7 +8,7 @@ tavily-python
 yt-dlp
 python-dotenv
 pandas
-pandas-ta
+ta
 streamlit
 plotly
 sqlalchemy

@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from world_model_agent import run_world_model
-from utils.db_util import get_trading_run_details
+from utils.db_util import DB_AVAILABLE, get_trading_run_details
 
 st.set_page_config(
     page_title="Run Agent - Finance Genie",
@@ -108,6 +108,12 @@ if st.button("🚀 Run Agent", type="primary", use_container_width=True):
                     # Store run ID for reference
                     st.info(f"📌 Run ID: `{result['run_id']}`")
                     st.caption(f"Timestamp: {result['timestamp']}")
+                    
+                    # Database status
+                    if DB_AVAILABLE:
+                        st.success("✓ Result saved to database")
+                    else:
+                        st.warning("⚠️ Database not available - result not persisted")
             
             except Exception as e:
                 st.error(f"❌ Error running agent: {str(e)}")
@@ -152,11 +158,11 @@ with st.expander("🔧 Configuration"):
     - `GOOGLE_API_KEY`: Gemini API key
     - `TAVILY_API_KEY`: Web search API
     - `EODHD_API_KEY`: Stock data API
-    - `PGVECTOR_CONNECTION`: PostgreSQL connection string
+    - `PGVECTOR_CONNECTION`: PostgreSQL connection string (optional for testing)
     
     **Models Used:**
     - **LLM**: Gemini 2.5 Flash (reasoning + decision making)
     - **Embeddings**: Gemini Text-Embedding-004 (768 dimensions)
     - **Framework**: LangGraph with React pattern
-    - **Vector Store**: PostgreSQL with pgvector extension
+    - **Vector Store**: PostgreSQL with pgvector extension (optional)
     """)

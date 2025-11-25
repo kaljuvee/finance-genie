@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from world_model_agent import run_world_model
-from utils.db_util import get_session, TradingDecision
+from utils.db_util import DB_AVAILABLE, get_trading_decisions
 
 st.set_page_config(
     page_title="Batch Analysis - Finance Genie",
@@ -167,6 +167,12 @@ if symbols_to_analyze:
             file_name=f"batch_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json"
         )
+        
+        # Database status
+        if DB_AVAILABLE:
+            st.success("✓ Results saved to database")
+        else:
+            st.warning("⚠️ Database not available - results not persisted")
 
 else:
     st.info("👆 Enter symbols above to start batch analysis")
